@@ -58,8 +58,8 @@ from flask_bootstrap import Bootstrap
 Bootstrap(app)
 
 AUTH0_CALLBACK_URL = "http://192.168.99.103:31380/callback"
-AUTH0_CLIENT_ID = "yEaEr5HRhE6kNlnV1vjM8VALXBXyDz9J"
-AUTH0_CLIENT_SECRET = "A5pbLiI_7R8eg9ffOYnwAyi680I5qylgvNd--XRV-KeisMaml5N84kTzvhjYGPso"
+AUTH0_CLIENT_ID = "yEaEr5HR"
+AUTH0_CLIENT_SECRET = "A5pbLiI_7R8eg9ffOYnwAyi680I"
 AUTH0_DOMAIN = "blog-mpharma.auth0.com"
 AUTH0_BASE_URL = 'https://' + AUTH0_DOMAIN
 AUTH0_AUDIENCE = "https://blog-mpharma.auth0.com/api/v2/"
@@ -185,7 +185,7 @@ def getForwardHeaders(request):
 
     if 'access_token' in session:
         headers['Authorization'] = 'Bearer ' + session['access_token']
-        
+
     # x-b3-*** headers can be populated using the opentracing span
     span = get_current_span()
     carrier = {}
