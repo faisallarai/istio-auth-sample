@@ -30,6 +30,8 @@ from json2html import *
 import logging
 import requests
 import os
+from authlib.flask.client import OAuth
+from six.moves.urllib.parse import urlencode
 
 # These two lines enable debugging at httplib level (requests->urllib3->http.client)
 # You will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
@@ -54,6 +56,26 @@ app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
 
 from flask_bootstrap import Bootstrap
 Bootstrap(app)
+
+AUTH0_CALLBACK_URL = "http://192.168.99.103:31380/callback"
+AUTH0_CLIENT_ID = "yEaEr5HRhE6kNlnV1vjM8VALXBXyDz9J"
+AUTH0_CLIENT_SECRET = "A5pbLiI_7R8eg9ffOYnwAyi680I5qylgvNd--XRV-KeisMaml5N84kTzvhjYGPso"
+AUTH0_DOMAIN = "blog-mpharma.auth0.com"
+AUTH0_BASE_URL = 'https://' + AUTH0_DOMAIN
+AUTH0_AUDIENCE = "https://blog-mpharma.auth0.com/api/v2/"
+
+oauth = OAuth(app)
+auth0 = oauth.register(
+    'auth0',
+    client_id=AUTH0_CLIENT_ID,
+    client_secret=AUTH0_CLIENT_SECRET,
+    api_base_url=AUTH0_BASE_URL,
+    access_token_url=AUTH0_BASE_URL + '/oauth/token',
+    authorize_url=AUTH0_BASE_URL + '/authorize',
+    client_kwargs={
+        'scope': 'openid profile',
+    },
+)
 
 servicesDomain = "" if (os.environ.get("SERVICES_DOMAIN") == None) else "." + os.environ.get("SERVICES_DOMAIN")
 
@@ -161,6 +183,9 @@ def trace():
 def getForwardHeaders(request):
     headers = {}
 
+    if 'access_token' in session:
+        headers['Authorization'] = 'Bearer ' + session['access_token']
+        
     # x-b3-*** headers can be populated using the opentracing span
     span = get_current_span()
     carrier = {}
@@ -203,6 +228,29 @@ def index():
 def health():
     return 'Product page is healthy'
 
+# add the following endpoints underneath it
+@app.route('/login')
+def login():
+    return auth0.authorize_redirect(redirect_uri=AUTH0_CALLBACK_URL, 
+                                    audience=AUTH0_AUDIENCE)
+
+
+@app.route('/callback')
+def callback():
+    response = auth0.authorize_access_token()          # 1
+    session['access_token'] = response['access_token'] # 2
+    userinfoResponse = auth0.get('userinfo')           # 3
+    userinfo = userinfoResponse.json()
+    session['user'] = userinfo['nickname']             # 4
+    return redirect('/productpage')
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    params = {'returnTo': url_for('front', _external=True),
+              'client_id': AUTH0_CLIENT_ID}
+    return redirect(auth0.api_base_url + '/v2/logout?' + urlencode(params))
 
 @app.route('/productpage')
 @trace()
